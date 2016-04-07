@@ -16,6 +16,7 @@
 
 package io.confluent.connect.hdfs.parquet;
 
+import io.confluent.connect.hdfs.avro.AvroData;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hive.metastore.TableType;
 import org.apache.hadoop.hive.metastore.api.FieldSchema;
@@ -25,7 +26,7 @@ import org.apache.kafka.connect.data.Schema;
 
 import java.util.List;
 
-import io.confluent.connect.avro.AvroData;
+
 import io.confluent.connect.hdfs.FileUtils;
 import io.confluent.connect.hdfs.hive.HiveMetaStore;
 import io.confluent.connect.hdfs.hive.HiveSchemaConverter;

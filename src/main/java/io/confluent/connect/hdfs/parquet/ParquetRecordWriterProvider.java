@@ -13,6 +13,7 @@
  **/
 package io.confluent.connect.hdfs.parquet;
 
+import io.confluent.connect.hdfs.avro.AvroData;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.hadoop.conf.Configuration;
@@ -24,7 +25,7 @@ import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 
 import java.io.IOException;
 
-import io.confluent.connect.avro.AvroData;
+
 import io.confluent.connect.hdfs.RecordWriterProvider;
 import io.confluent.connect.hdfs.RecordWriter;
 

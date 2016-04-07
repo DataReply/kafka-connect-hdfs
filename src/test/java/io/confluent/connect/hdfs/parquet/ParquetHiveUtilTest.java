@@ -14,6 +14,7 @@
 
 package io.confluent.connect.hdfs.parquet;
 
+import io.confluent.connect.hdfs.avro.AvroData;
 import org.apache.hadoop.hive.metastore.api.FieldSchema;
 import org.apache.hadoop.hive.ql.metadata.Table;
 import org.apache.kafka.common.TopicPartition;
@@ -30,7 +31,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
-import io.confluent.connect.avro.AvroData;
 import io.confluent.connect.hdfs.DataWriter;
 import io.confluent.connect.hdfs.HdfsSinkConnectorConfig;
 import io.confluent.connect.hdfs.hive.HiveTestBase;

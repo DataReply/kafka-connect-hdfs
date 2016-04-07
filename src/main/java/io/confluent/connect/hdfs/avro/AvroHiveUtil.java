@@ -23,7 +23,7 @@ import org.apache.kafka.connect.data.Schema;
 
 import java.util.List;
 
-import io.confluent.connect.avro.AvroData;
+
 import io.confluent.connect.hdfs.FileUtils;
 import io.confluent.connect.hdfs.errors.HiveMetaStoreException;
 import io.confluent.connect.hdfs.hive.HiveMetaStore;

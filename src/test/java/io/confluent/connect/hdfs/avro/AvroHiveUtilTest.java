@@ -29,7 +29,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
-import io.confluent.connect.avro.AvroData;
 import io.confluent.connect.hdfs.DataWriter;
 import io.confluent.connect.hdfs.hive.HiveTestBase;
 import io.confluent.connect.hdfs.hive.HiveTestUtils;
