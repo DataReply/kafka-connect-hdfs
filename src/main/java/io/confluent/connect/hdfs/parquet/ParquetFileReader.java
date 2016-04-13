@@ -14,6 +14,7 @@
 
 package io.confluent.connect.hdfs.parquet;
 
+import io.confluent.connect.hdfs.avro.AvroData;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -25,7 +26,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 
-import io.confluent.connect.avro.AvroData;
+
 import io.confluent.connect.hdfs.SchemaFileReader;
 
 public class ParquetFileReader implements SchemaFileReader {

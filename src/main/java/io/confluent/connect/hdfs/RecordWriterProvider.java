@@ -14,12 +14,13 @@
 
 package io.confluent.connect.hdfs;
 
+import io.confluent.connect.hdfs.avro.AvroData;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.kafka.connect.sink.SinkRecord;
 
 import java.io.IOException;
 
-import io.confluent.connect.avro.AvroData;
+
 
 public interface RecordWriterProvider {
   String getExtension();

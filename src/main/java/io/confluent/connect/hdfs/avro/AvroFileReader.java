@@ -28,7 +28,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 
-import io.confluent.connect.avro.AvroData;
+
 import io.confluent.connect.hdfs.SchemaFileReader;
 
 public class AvroFileReader implements SchemaFileReader {

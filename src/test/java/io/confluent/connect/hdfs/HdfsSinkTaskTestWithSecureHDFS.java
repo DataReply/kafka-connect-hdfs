@@ -14,6 +14,7 @@
 
 package io.confluent.connect.hdfs;
 
+import io.confluent.connect.hdfs.avro.AvroData;
 import org.apache.hadoop.fs.Path;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.connect.data.Schema;
@@ -25,7 +26,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Map;
 
-import io.confluent.connect.avro.AvroData;
 import io.confluent.connect.hdfs.avro.AvroFileReader;
 
 import static org.junit.Assert.assertEquals;

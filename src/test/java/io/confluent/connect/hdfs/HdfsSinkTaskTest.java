@@ -14,6 +14,7 @@
 
 package io.confluent.connect.hdfs;
 
+import io.confluent.connect.hdfs.avro.AvroData;
 import org.apache.hadoop.fs.Path;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.connect.data.Schema;
@@ -28,7 +29,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import io.confluent.connect.avro.AvroData;
 import io.confluent.connect.hdfs.avro.AvroFileReader;
 import io.confluent.connect.hdfs.storage.Storage;
 import io.confluent.connect.hdfs.storage.StorageFactory;

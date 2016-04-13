@@ -77,9 +77,14 @@
             <artifactId>connect-api</artifactId>
             <version>${kafka.version}</version>
         </dependency>
+        <!--<dependency>-->
+            <!--<groupId>io.confluent</groupId>-->
+            <!--<artifactId>kafka-connect-avro-converter</artifactId>-->
+            <!--<version>${confluent.version}</version>-->
+        <!--</dependency>-->
         <dependency>
             <groupId>io.confluent</groupId>
-            <artifactId>kafka-connect-avro-converter</artifactId>
+            <artifactId>kafka-avro-serializer</artifactId>
             <version>${confluent.version}</version>
         </dependency>
         <dependency>

@@ -14,6 +14,7 @@
 
 package io.confluent.connect.hdfs;
 
+import io.confluent.connect.hdfs.avro.AvroData;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.connect.errors.ConnectException;
@@ -27,7 +28,7 @@ import java.util.Map;
 import java.util.Set;
 
 import io.confluent.common.config.ConfigException;
-import io.confluent.connect.avro.AvroData;
+
 import io.confluent.connect.hdfs.schema.Compatibility;
 import io.confluent.connect.hdfs.schema.SchemaUtils;
 
