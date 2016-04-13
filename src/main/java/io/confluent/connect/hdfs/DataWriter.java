@@ -45,7 +45,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 import io.confluent.common.config.ConfigException;
-import io.confluent.connect.avro.AvroData;
+import io.confluent.connect.hdfs.avro.AvroData;
 import io.confluent.connect.hdfs.filter.CommittedFileFilter;
 import io.confluent.connect.hdfs.filter.TopicCommittedFileFilter;
 import io.confluent.connect.hdfs.hive.HiveMetaStore;

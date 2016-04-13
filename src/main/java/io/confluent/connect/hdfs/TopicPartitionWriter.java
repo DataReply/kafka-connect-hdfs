@@ -44,7 +44,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 
-import io.confluent.connect.avro.AvroData;
+import io.confluent.connect.hdfs.avro.AvroData;
 import io.confluent.connect.hdfs.errors.HiveMetaStoreException;
 import io.confluent.connect.hdfs.filter.CommittedFileFilter;
 import io.confluent.connect.hdfs.filter.TopicPartitionCommittedFileFilter;
