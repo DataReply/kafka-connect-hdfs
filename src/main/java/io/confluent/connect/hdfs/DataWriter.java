@@ -122,12 +122,12 @@ public class DataWriter {
         if (conf.get("dfs.namenode.kerberos.principal") == null) {
           conf.set("dfs.namenode.kerberos.principal", namenodePrincipal);
         }
-        log.info("Hadoop namenode principal: " + conf.get("dfs.namenode.kerberos.principal"));
+        log.warn("Hadoop namenode principal: " + conf.get("dfs.namenode.kerberos.principal"));
 
         UserGroupInformation.setConfiguration(conf);
         UserGroupInformation.loginUserFromKeytab(principal, keytab);
         final UserGroupInformation ugi = UserGroupInformation.getLoginUser();
-        log.info("Login as: " + ugi.getUserName());
+        log.warn("Login as: " + ugi.getUserName());
 
         final long renewPeriod = connectorConfig.getLong(HdfsSinkConnectorConfig.KERBEROS_TICKET_RENEW_PERIOD_MS_CONFIG);
 

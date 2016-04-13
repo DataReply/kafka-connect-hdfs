@@ -17,6 +17,8 @@ package io.confluent.connect.hdfs;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.security.SecurityUtil;
+import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.errors.ConnectException;
@@ -28,6 +30,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -318,12 +322,62 @@ public class TopicPartitionWriter {
         log.error("Exception on {}.", tp);
         failureTime = System.currentTimeMillis();
         setRetryTimeout(timeoutMs);
+
+        boolean secureHadoop = connectorConfig.getBoolean(HdfsSinkConnectorConfig.HDFS_AUTHENTICATION_KERBEROS_CONFIG);
+        if (secureHadoop) {
+          renewKerberos();
+        }
+
         break;
       }
     }
     if (buffer.isEmpty() && !tmpOpened) { //enter only if buffer is empty and there is not tmp file still opened
       resume();
       state = State.WRITE_STARTED;
+    }
+  }
+
+
+  private void renewKerberos() {
+    String hadoopConfDir = connectorConfig.getString(HdfsSinkConnectorConfig.HADOOP_CONF_DIR_CONFIG);
+    log.warn("KERBEROS RENEW - Hadoop configuration directory {}", hadoopConfDir);
+    conf = new Configuration();
+    if (!hadoopConfDir.equals("")) {
+      conf.addResource(new Path(hadoopConfDir + "/core-site.xml"));
+      conf.addResource(new Path(hadoopConfDir + "/hdfs-site.xml"));
+    }
+    SecurityUtil.setAuthenticationMethod(UserGroupInformation.AuthenticationMethod.KERBEROS, conf);
+    String principalConfig = connectorConfig.getString(HdfsSinkConnectorConfig.CONNECT_HDFS_PRINCIPAL_CONFIG);
+    String keytab = connectorConfig.getString(HdfsSinkConnectorConfig.CONNECT_HDFS_KEYTAB_CONFIG);
+
+
+    conf.set("hadoop.security.authentication", "kerberos");
+    conf.set("hadoop.security.authorization", "true");
+    String hostname = null;
+    try {
+      hostname = InetAddress.getLocalHost().getCanonicalHostName();
+      // replace the _HOST specified in the principal config to the actual host
+      String principal = SecurityUtil.getServerPrincipal(principalConfig, hostname);
+      String namenodePrincipalConfig = connectorConfig.getString(HdfsSinkConnectorConfig.HDFS_NAMENODE_PRINCIPAL_CONFIG);
+      String namenodePrincipal = SecurityUtil.getServerPrincipal(namenodePrincipalConfig, hostname);
+      // namenode principal is needed for multi-node hadoop cluster
+      if (conf.get("dfs.namenode.kerberos.principal") == null) {
+        conf.set("dfs.namenode.kerberos.principal", namenodePrincipal);
+      }
+      log.warn("KERBEROS RENEW - Hadoop namenode principal: " + conf.get("dfs.namenode.kerberos.principal"));
+
+      UserGroupInformation.setConfiguration(conf);
+      UserGroupInformation.loginUserFromKeytab(principal, keytab);
+      final UserGroupInformation ugi = UserGroupInformation.getLoginUser();
+      ugi.checkTGTAndReloginFromKeytab();
+      log.warn("Kerberos renewed with success");
+
+    } catch (UnknownHostException e1) {
+      log.error("Error renew Kerberos keytab");
+      e1.printStackTrace();
+    } catch (IOException e1) {
+      log.error("Error renew Kerberos keytab");
+      e1.printStackTrace();
     }
   }
 
