@@ -16,6 +16,7 @@
 
 package io.confluent.connect.hdfs.utils;
 
+import io.confluent.connect.hdfs.avro.AvroData;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.kafka.connect.sink.SinkRecord;
 
@@ -24,7 +25,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
-import io.confluent.connect.avro.AvroData;
 import io.confluent.connect.hdfs.RecordWriter;
 import io.confluent.connect.hdfs.RecordWriterProvider;
 

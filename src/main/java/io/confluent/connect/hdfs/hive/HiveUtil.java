@@ -14,9 +14,10 @@
 
 package io.confluent.connect.hdfs.hive;
 
+import io.confluent.connect.hdfs.avro.AvroData;
 import org.apache.kafka.connect.data.Schema;
 
-import io.confluent.connect.avro.AvroData;
+
 import io.confluent.connect.hdfs.HdfsSinkConnectorConfig;
 import io.confluent.connect.hdfs.partitioner.Partitioner;
 

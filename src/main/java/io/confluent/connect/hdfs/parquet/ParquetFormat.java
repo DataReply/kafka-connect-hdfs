@@ -14,11 +14,12 @@
 
 package io.confluent.connect.hdfs.parquet;
 
-import io.confluent.connect.avro.AvroData;
+
 import io.confluent.connect.hdfs.Format;
 import io.confluent.connect.hdfs.HdfsSinkConnectorConfig;
 import io.confluent.connect.hdfs.RecordWriterProvider;
 import io.confluent.connect.hdfs.SchemaFileReader;
+import io.confluent.connect.hdfs.avro.AvroData;
 import io.confluent.connect.hdfs.hive.HiveMetaStore;
 import io.confluent.connect.hdfs.hive.HiveUtil;
 
