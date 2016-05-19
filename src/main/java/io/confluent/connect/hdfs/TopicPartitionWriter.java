@@ -236,7 +236,7 @@ public class TopicPartitionWriter {
         return;
       }
     }
-    log.info("Messages on buffer: " + buffer.size());
+    //log.info("Messages on buffer: " + buffer.size());
     buffer : while(!buffer.isEmpty() || tmpOpened) { //if a tmp file is opened enter anyway to check shouldRotate()
       try {
         switch (state) {
@@ -279,7 +279,7 @@ public class TopicPartitionWriter {
                   // Fall through and try to rotate immediately
                 } else {
                   tmpOpened = true; //indicate that now exist a tmp file opened
-                  log.info("state buffer true tmpOpened: " + tmpOpened);
+                  //log.info("state buffer true tmpOpened: " + tmpOpened);
                   break;
                 }
               }
@@ -292,7 +292,7 @@ public class TopicPartitionWriter {
                 // Fall through and try to rotate immediately
               } else {
                 tmpOpened = true; //indicate that now exist a tmp file opened
-                log.info("state buffer else tmpOpened: " + tmpOpened);
+                //log.info("state buffer else tmpOpened: " + tmpOpened);
                 resume(); //break while() and check also if in the meantime new messages arrived
                 state = State.WRITE_STARTED;
                 break buffer;

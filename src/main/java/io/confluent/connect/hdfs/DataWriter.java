@@ -141,6 +141,7 @@ public class DataWriter {
                   DataWriter.this.wait(renewPeriod);
                   if (isRunning) {
                     ugi.reloginFromKeytab();
+                    log.warn("Called renew Kerberos function: " + ugi.toString());
                   }
                 } catch (IOException e) {
                   // We ignore this exception during relogin as each successful relogin gives
@@ -150,6 +151,7 @@ public class DataWriter {
                   log.error("Error renewing the ticket", e);
                 } catch (InterruptedException e) {
                   // ignored
+                  log.error("Renew Kerberos InterruptedException");
                 }
               }
             }
