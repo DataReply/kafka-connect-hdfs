@@ -44,12 +44,14 @@ public class HdfsSinkConnectorTestBase {
 
   protected MockSinkTaskContext context;
   protected static final String TOPIC = "topic";
+  protected static final String TOPIC_WITH_DOTS = "topic.with.dots";
   protected static final int PARTITION = 12;
   protected static final int PARTITION2 = 13;
   protected static final int PARTITION3 = 14;
   protected static final TopicPartition TOPIC_PARTITION = new TopicPartition(TOPIC, PARTITION);
   protected static final TopicPartition TOPIC_PARTITION2 = new TopicPartition(TOPIC, PARTITION2);
   protected static final TopicPartition TOPIC_PARTITION3 = new TopicPartition(TOPIC, PARTITION3);
+  protected static final TopicPartition TOPIC_WITH_DOTS_PARTITION = new TopicPartition(TOPIC_WITH_DOTS, PARTITION);
   protected static Set<TopicPartition> assignment;
 
 
@@ -181,13 +183,12 @@ public class HdfsSinkConnectorTestBase {
     }
 
     @Override
-    public void pause(TopicPartition... partitions) {
-      return;
-    }
+    public void pause(TopicPartition... partitions) {}
 
     @Override
-    public void resume(TopicPartition... partitions) {
-      return;
-    }
+    public void resume(TopicPartition... partitions) {}
+
+    @Override
+    public void requestCommit() {}
   }
 }

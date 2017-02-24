@@ -13,6 +13,7 @@
             <directory>${project.basedir}</directory>
             <outputDirectory>share/doc/kafka-connect-hdfs/</outputDirectory>
             <includes>
+                <include>version.txt</include>
                 <include>README*</include>
                 <include>LICENSE*</include>
                 <include>NOTICE*</include>
@@ -37,7 +38,6 @@
                 shipped with Confluent platform and other dependencies such as Hadoop and Avro.
                 This allows correctly setup of CLASSPATH in kafka-run-class.sh when running
                 kafka connect hdfs connector. -->
-                <exclude>io.confluent:common-*</exclude>
                 <exclude>org.apache.kafka:connect-api</exclude>
                 <exclude>org.mortbay.jetty:*</exclude>
                 <exclude>com.sun.jersey:*</exclude>

@@ -67,7 +67,8 @@ public class HiveIntegrationAvroTest extends HiveTestBase {
     }
 
     hdfsWriter.write(sinkRecords);
-    hdfsWriter.close();
+    hdfsWriter.close(assignment);
+    hdfsWriter.stop();
 
     Map<String, String> props = createProps();
     props.put(HdfsSinkConnectorConfig.HIVE_INTEGRATION_CONFIG, "true");
@@ -96,7 +97,8 @@ public class HiveIntegrationAvroTest extends HiveTestBase {
 
     assertEquals(expectedPartitions, partitions);
 
-    hdfsWriter.close();
+    hdfsWriter.close(assignment);
+    hdfsWriter.stop();
   }
 
   @Test
@@ -119,8 +121,10 @@ public class HiveIntegrationAvroTest extends HiveTestBase {
 
       sinkRecords.add(sinkRecord);
     }
+
     hdfsWriter.write(sinkRecords);
-    hdfsWriter.close();
+    hdfsWriter.close(assignment);
+    hdfsWriter.stop();
 
     Table table = hiveMetaStore.getTable(hiveDatabase, TOPIC);
     List<String> expectedColumnNames = new ArrayList<>();
@@ -139,6 +143,54 @@ public class HiveIntegrationAvroTest extends HiveTestBase {
     expectedPartitions.add(FileUtils.directoryName(url, topicsDir, directory));
 
     List<String> partitions = hiveMetaStore.listPartitions(hiveDatabase, TOPIC, (short)-1);
+
+    assertEquals(expectedPartitions, partitions);
+  }
+
+  @Test
+  public void testHiveIntegrationTopicWithDotsAvro() throws Exception {
+    assignment.add(TOPIC_WITH_DOTS_PARTITION);
+
+    Map<String, String> props = createProps();
+    props.put(HdfsSinkConnectorConfig.HIVE_INTEGRATION_CONFIG, "true");
+    HdfsSinkConnectorConfig config = new HdfsSinkConnectorConfig(props);
+
+    DataWriter hdfsWriter = new DataWriter(config, context, avroData);
+    hdfsWriter.recover(TOPIC_WITH_DOTS_PARTITION);
+
+    String key = "key";
+    Schema schema = createSchema();
+    Struct record = createRecord(schema);
+
+    Collection<SinkRecord> sinkRecords = new ArrayList<>();
+    for (long offset = 0; offset < 7; offset++) {
+      SinkRecord sinkRecord =
+         new SinkRecord(TOPIC_WITH_DOTS, PARTITION, Schema.STRING_SCHEMA, key, schema, record, offset);
+
+      sinkRecords.add(sinkRecord);
+    }
+
+    hdfsWriter.write(sinkRecords);
+    hdfsWriter.close(assignment);
+    hdfsWriter.stop();
+
+    Table table = hiveMetaStore.getTable(hiveDatabase, TOPIC_WITH_DOTS);
+    List<String> expectedColumnNames = new ArrayList<>();
+    for (Field field: schema.fields()) {
+      expectedColumnNames.add(field.name());
+    }
+
+    List<String> actualColumnNames = new ArrayList<>();
+    for (FieldSchema column: table.getSd().getCols()) {
+      actualColumnNames.add(column.getName());
+    }
+    assertEquals(expectedColumnNames, actualColumnNames);
+
+    List<String> expectedPartitions = new ArrayList<>();
+    String directory = TOPIC_WITH_DOTS + "/" + "partition=" + String.valueOf(PARTITION);
+    expectedPartitions.add(FileUtils.directoryName(url, topicsDir, directory));
+
+    List<String> partitions = hiveMetaStore.listPartitions(hiveDatabase, TOPIC_WITH_DOTS, (short)-1);
 
     assertEquals(expectedPartitions, partitions);
   }
@@ -169,7 +221,8 @@ public class HiveIntegrationAvroTest extends HiveTestBase {
     }
 
     hdfsWriter.write(sinkRecords);
-    hdfsWriter.close();
+    hdfsWriter.close(assignment);
+    hdfsWriter.stop();
 
     Table table = hiveMetaStore.getTable(hiveDatabase, TOPIC);
 
@@ -244,7 +297,8 @@ public class HiveIntegrationAvroTest extends HiveTestBase {
     }
 
     hdfsWriter.write(sinkRecords);
-    hdfsWriter.close();
+    hdfsWriter.close(assignment);
+    hdfsWriter.stop();
 
     Table table = hiveMetaStore.getTable(hiveDatabase, TOPIC);
 

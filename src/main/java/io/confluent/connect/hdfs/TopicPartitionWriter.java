@@ -18,12 +18,15 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.Path;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.errors.IllegalWorkerStateException;
 import org.apache.kafka.connect.errors.SchemaProjectorException;
 import org.apache.kafka.connect.sink.SinkRecord;
 import org.apache.kafka.connect.sink.SinkTaskContext;
+import org.joda.time.DateTime;
+import org.joda.time.DateTimeZone;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -56,7 +59,7 @@ public class TopicPartitionWriter {
   private static final Logger log = LoggerFactory.getLogger(TopicPartitionWriter.class);
   private WAL wal;
   private Map<String, String> tempFiles;
-  private Map<String, RecordWriter> writers;
+  private Map<String, RecordWriter<SinkRecord>> writers;
   private TopicPartition tp;
   private Partitioner partitioner;
   private String url;
@@ -70,6 +73,8 @@ public class TopicPartitionWriter {
   private int flushSize;
   private long rotateIntervalMs;
   private long lastRotate;
+  private long rotateScheduleIntervalMs;
+  private long nextScheduledRotate;
   private RecordWriterProvider writerProvider;
   private Configuration conf;
   private AvroData avroData;
@@ -85,6 +90,7 @@ public class TopicPartitionWriter {
   private HdfsSinkConnectorConfig connectorConfig;
   private String extension;
   private final String zeroPadOffsetFormat;
+  private DateTimeZone timeZone;
 
   private final boolean hiveIntegration;
   private String hiveDatabase;
@@ -92,7 +98,7 @@ public class TopicPartitionWriter {
   private SchemaFileReader schemaFileReader;
   private HiveUtil hive;
   private ExecutorService executorService;
-  private Queue<Future> hiveUpdateFutures;
+  private Queue<Future<Void>> hiveUpdateFutures;
   private Set<String> hivePartitions;
 
   public TopicPartitionWriter(
@@ -118,7 +124,7 @@ public class TopicPartitionWriter {
       HiveUtil hive,
       SchemaFileReader schemaFileReader,
       ExecutorService executorService,
-      Queue<Future> hiveUpdateFutures) {
+      Queue<Future<Void>> hiveUpdateFutures) {
     this.tp = tp;
     this.connectorConfig = connectorConfig;
     this.context = context;
@@ -133,6 +139,7 @@ public class TopicPartitionWriter {
     topicsDir = connectorConfig.getString(HdfsSinkConnectorConfig.TOPICS_DIR_CONFIG);
     flushSize = connectorConfig.getInt(HdfsSinkConnectorConfig.FLUSH_SIZE_CONFIG);
     rotateIntervalMs = connectorConfig.getLong(HdfsSinkConnectorConfig.ROTATE_INTERVAL_MS_CONFIG);
+    rotateScheduleIntervalMs = connectorConfig.getLong(HdfsSinkConnectorConfig.ROTATE_SCHEDULE_INTERVAL_MS_CONFIG);
     timeoutMs = connectorConfig.getLong(HdfsSinkConnectorConfig.RETRY_BACKOFF_CONFIG);
     compatibility = SchemaUtils.getCompatibility(
         connectorConfig.getString(HdfsSinkConnectorConfig.SCHEMA_COMPATIBILITY_CONFIG));
@@ -165,6 +172,13 @@ public class TopicPartitionWriter {
       this.hiveUpdateFutures = hiveUpdateFutures;
       hivePartitions = new HashSet<>();
     }
+
+    if(rotateScheduleIntervalMs > 0) {
+      timeZone = DateTimeZone.forID(connectorConfig.getString(HdfsSinkConnectorConfig.TIMEZONE_CONFIG));
+    }
+
+    // Initialize rotation timers
+    updateRotationTimers();
   }
 
   private enum State {
@@ -186,6 +200,7 @@ public class TopicPartitionWriter {
     }
   }
 
+  @SuppressWarnings("fallthrough")
   public boolean recover() {
     try {
       switch (state) {
@@ -218,6 +233,20 @@ public class TopicPartitionWriter {
     return true;
   }
 
+  private void updateRotationTimers() {
+    lastRotate = System.currentTimeMillis();
+    if(log.isDebugEnabled() && rotateIntervalMs > 0) {
+      log.debug("Update last rotation timer. Next rotation for {} will be in {}ms", tp, rotateIntervalMs);
+    }
+    if (rotateScheduleIntervalMs > 0) {
+      nextScheduledRotate = DateTimeUtils.getNextTimeAdjustedByDay(lastRotate, rotateScheduleIntervalMs, timeZone);
+      if (log.isDebugEnabled()) {
+        log.debug("Update scheduled rotation timer. Next rotation for {} will be at {}", tp, new DateTime(nextScheduledRotate).withZone(timeZone).toString());
+      }
+    }
+  }
+
+  @SuppressWarnings("fallthrough")
   public void write() {
     long now = System.currentTimeMillis();
     if (failureTime > 0 && now - failureTime < timeoutMs) {
@@ -228,6 +257,7 @@ public class TopicPartitionWriter {
       if (!success) {
         return;
       }
+      updateRotationTimers();
     }
     while(!buffer.isEmpty()) {
       try {
@@ -273,7 +303,7 @@ public class TopicPartitionWriter {
               }
             }
           case SHOULD_ROTATE:
-            lastRotate = System.currentTimeMillis();
+            updateRotationTimers();
             closeTempFile();
             nextState();
           case TEMP_FILE_CLOSED:
@@ -291,13 +321,29 @@ public class TopicPartitionWriter {
       } catch (SchemaProjectorException | IllegalWorkerStateException | HiveMetaStoreException e ) {
         throw new RuntimeException(e);
       } catch (IOException | ConnectException e) {
-        log.error("Exception on {}.", tp);
+        log.error("Exception on topic partition {}: ", tp, e);
         failureTime = System.currentTimeMillis();
         setRetryTimeout(timeoutMs);
         break;
       }
     }
     if (buffer.isEmpty()) {
+      // committing files after waiting for rotateIntervalMs time but less than flush.size records available
+      if (recordCounter > 0 && shouldRotate(now)) {
+        log.info("committing files after waiting for rotateIntervalMs time but less than flush.size records available.");
+        updateRotationTimers();
+
+        try {
+          closeTempFile();
+          appendToWAL();
+          commitFile();
+        } catch (IOException e) {
+          log.error("Exception on topic partition {}: ", tp, e);
+          failureTime = System.currentTimeMillis();
+          setRetryTimeout(timeoutMs);
+        }
+      }
+
       resume();
       state = State.WRITE_STARTED;
     }
@@ -349,7 +395,7 @@ public class TopicPartitionWriter {
     return offset;
   }
 
-  public Map<String, RecordWriter> getWriters() {
+  public Map<String, RecordWriter<SinkRecord>> getWriters() {
     return writers;
   }
 
@@ -374,13 +420,11 @@ public class TopicPartitionWriter {
   }
 
   private boolean shouldRotate(long now) {
-    if (recordCounter >= flushSize) {
-      return true;
-    } else if (rotateIntervalMs <= 0) {
-      return false;
-    } else {
-      return now - lastRotate >= rotateIntervalMs;
-    }
+    boolean periodicRotation = rotateIntervalMs > 0 && now - lastRotate >= rotateIntervalMs;
+    boolean scheduledRotation = rotateScheduleIntervalMs > 0 && now >= nextScheduledRotate;
+    boolean messageSizeRotation = recordCounter >= flushSize;
+
+    return periodicRotation || scheduledRotation || messageSizeRotation;
   }
 
   private void readOffset() throws ConnectException {
@@ -404,7 +448,6 @@ public class TopicPartitionWriter {
     context.resume(tp);
   }
 
-  @SuppressWarnings("unchecked")
   private RecordWriter<SinkRecord> getWriter(SinkRecord record, String encodedPartition)
       throws ConnectException {
     try {
@@ -429,7 +472,7 @@ public class TopicPartitionWriter {
     if (tempFiles.containsKey(encodedPartition)) {
       tempFile = tempFiles.get(encodedPartition);
     } else {
-      String directory = HdfsSinkConnecorConstants.TEMPFILE_DIRECTORY + getDirectory(encodedPartition);
+      String directory = HdfsSinkConnectorConstants.TEMPFILE_DIRECTORY + getDirectory(encodedPartition);
       tempFile = FileUtils.tempFileName(url, topicsDir, directory, extension);
       tempFiles.put(encodedPartition, tempFile);
     }
@@ -451,10 +494,15 @@ public class TopicPartitionWriter {
   private void resetOffsets() throws ConnectException {
     if (!recovered) {
       readOffset();
-      if (offset > 0) {
-        log.debug("Resetting offset for {} to {}", tp, offset);
-        context.offset(tp, offset);
-      }
+      // Note that we must *always* request that we seek to an offset here. Currently the framework will still commit
+      // Kafka offsets even though we track our own (see KAFKA-3462), which can result in accidentally using that offset
+      // if one was committed but no files were rolled to their final location in HDFS (i.e. some data was accepted,
+      // written to a tempfile, but then that tempfile was discarded). To protect against this, even if we just want
+      // to start at offset 0 or reset to the earliest offset, we specify that explicitly to forcibly override any
+      // committed offsets.
+      long seekOffset = offset > 0 ? offset : 0;
+      log.debug("Resetting offset for {} to {}", tp, seekOffset);
+      context.offset(tp, seekOffset);
       recovered = true;
     }
   }
@@ -497,7 +545,7 @@ public class TopicPartitionWriter {
 
   private void closeTempFile(String encodedPartition) throws IOException {
     if (writers.containsKey(encodedPartition)) {
-      RecordWriter writer = writers.get(encodedPartition);
+      RecordWriter<SinkRecord> writer = writers.get(encodedPartition);
       writer.close();
       writers.remove(encodedPartition);
     }

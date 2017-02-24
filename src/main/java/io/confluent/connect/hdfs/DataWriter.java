@@ -20,6 +20,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.security.SecurityUtil;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.sink.SinkRecord;
@@ -44,7 +45,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
-import io.confluent.common.config.ConfigException;
 import io.confluent.connect.avro.AvroData;
 import io.confluent.connect.hdfs.filter.CommittedFileFilter;
 import io.confluent.connect.hdfs.filter.TopicCommittedFileFilter;
@@ -75,12 +75,11 @@ public class DataWriter {
   private String hiveDatabase;
   private HiveMetaStore hiveMetaStore;
   private HiveUtil hive;
-  private Queue<Future> hiveUpdateFutures;
+  private Queue<Future<Void>> hiveUpdateFutures;
   private boolean hiveIntegration;
   private Thread ticketRenewThread;
   private volatile boolean isRunning;
 
-  @SuppressWarnings("unchecked")
   public DataWriter(HdfsSinkConnectorConfig connectorConfig, SinkTaskContext context, AvroData avroData) {
     try {
       String hadoopHome = connectorConfig.getString(HdfsSinkConnectorConfig.HADOOP_HOME_CONFIG);
@@ -163,12 +162,13 @@ public class DataWriter {
       topicsDir = connectorConfig.getString(HdfsSinkConnectorConfig.TOPICS_DIR_CONFIG);
       String logsDir = connectorConfig.getString(HdfsSinkConnectorConfig.LOGS_DIR_CONFIG);
 
+      @SuppressWarnings("unchecked")
       Class<? extends Storage> storageClass = (Class<? extends Storage>) Class
               .forName(connectorConfig.getString(HdfsSinkConnectorConfig.STORAGE_CLASS_CONFIG));
       storage = StorageFactory.createStorage(storageClass, conf, url);
 
       createDir(topicsDir);
-      createDir(topicsDir + HdfsSinkConnecorConstants.TEMPFILE_DIRECTORY);
+      createDir(topicsDir + HdfsSinkConnectorConstants.TEMPFILE_DIRECTORY);
       createDir(logsDir);
 
       format = getFormat();
@@ -212,10 +212,10 @@ public class DataWriter {
     }
 
     if (hiveIntegration) {
-      Iterator<Future> iterator = hiveUpdateFutures.iterator();
+      Iterator<Future<Void>> iterator = hiveUpdateFutures.iterator();
       while (iterator.hasNext()) {
         try {
-          Future future = iterator.next();
+          Future<Void> future = iterator.next();
           if (future.isDone()) {
             future.get();
             iterator.remove();
@@ -269,7 +269,7 @@ public class DataWriter {
     }
   }
 
-  public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
+  public void open(Collection<TopicPartition> partitions) {
     assignment = new HashSet<>(partitions);
     for (TopicPartition tp: assignment) {
       TopicPartitionWriter topicPartitionWriter = new TopicPartitionWriter(
@@ -282,12 +282,12 @@ public class DataWriter {
     }
   }
 
-  public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
+  public void close(Collection<TopicPartition> partitions) {
     // Close any writers we have. We may get assigned the same partitions and end up duplicating
     // some effort since we'll have to reprocess those messages. It may be possible to hold on to
     // the TopicPartitionWriter and continue to use the temp file, but this can get significantly
     // more complex due to potential failures and network partitions. For example, we may get
-    // this onPartitionsRevoked, then miss a few generations of group membership, during which
+    // this close, then miss a few generations of group membership, during which
     // data may have continued to be processed and we'd have to restart from the recovery stage,
     // make sure we apply the WAL, and only reuse the temp file if the starting offset is still
     // valid. For now, we prefer the simpler solution that may result in a bit of wasted effort.
@@ -295,18 +295,14 @@ public class DataWriter {
       try {
         topicPartitionWriters.get(tp).close();
       } catch (ConnectException e) {
-        log.error("Error closing writer for {}. Error: {]", tp, e.getMessage());
+        log.error("Error closing writer for {}. Error: {}", tp, e.getMessage());
       } finally {
         topicPartitionWriters.remove(tp);
       }
     }
   }
 
-  public void close() {
-    for (TopicPartition tp: assignment) {
-      topicPartitionWriters.get(tp).close();
-    }
-
+  public void stop() {
     if (executorService != null) {
       boolean terminated = false;
       try {
@@ -358,7 +354,7 @@ public class DataWriter {
     return storage;
   }
 
-  public Map<String, RecordWriter> getWriters(TopicPartition tp) {
+  public Map<String, RecordWriter<SinkRecord>> getWriters(TopicPartition tp) {
     return topicPartitionWriters.get(tp).getWriters();
   }
 
@@ -390,10 +386,10 @@ public class DataWriter {
     return sb.toString();
   }
 
-  @SuppressWarnings("unchecked")
   private Partitioner createPartitioner(HdfsSinkConnectorConfig config)
       throws ClassNotFoundException, IllegalAccessException, InstantiationException {
 
+    @SuppressWarnings("unchecked")
     Class<? extends Partitioner> partitionerClasss = (Class<? extends Partitioner>)
         Class.forName(config.getString(HdfsSinkConnectorConfig.PARTITIONER_CLASS_CONFIG));
 

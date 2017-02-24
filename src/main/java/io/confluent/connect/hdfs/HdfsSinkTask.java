@@ -16,9 +16,11 @@ package io.confluent.connect.hdfs;
 
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.sink.SinkRecord;
 import org.apache.kafka.connect.sink.SinkTask;
+import org.joda.time.DateTimeZone;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,7 +28,6 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
 
-import io.confluent.common.config.ConfigException;
 import io.confluent.connect.avro.AvroData;
 import io.confluent.connect.hdfs.schema.Compatibility;
 import io.confluent.connect.hdfs.schema.SchemaUtils;
@@ -48,6 +49,7 @@ public class HdfsSinkTask extends SinkTask {
 
   @Override
   public void start(Map<String, String> props) {
+    Set<TopicPartition> assignment = context.assignment();;
     try {
       HdfsSinkConnectorConfig connectorConfig = new HdfsSinkConnectorConfig(props);
       boolean hiveIntegration = connectorConfig.getBoolean(HdfsSinkConnectorConfig.HIVE_INTEGRATION_CONFIG);
@@ -58,10 +60,20 @@ public class HdfsSinkTask extends SinkTask {
           throw new ConfigException("Hive Integration requires schema compatibility to be BACKWARD, FORWARD or FULL");
         }
       }
+
+      //check that timezone it setup correctly in case of scheduled rotation
+      if(connectorConfig.getLong(HdfsSinkConnectorConfig.ROTATE_SCHEDULE_INTERVAL_MS_CONFIG) > 0) {
+        String timeZoneString = connectorConfig.getString(HdfsSinkConnectorConfig.TIMEZONE_CONFIG);
+        if (timeZoneString.equals("")) {
+          throw new ConfigException(HdfsSinkConnectorConfig.TIMEZONE_CONFIG,
+                  timeZoneString, "Timezone cannot be empty when using scheduled file rotation.");
+        }
+        DateTimeZone.forID(timeZoneString);
+      }
+
       int schemaCacheSize = connectorConfig.getInt(HdfsSinkConnectorConfig.SCHEMA_CACHE_SIZE_CONFIG);
       avroData = new AvroData(schemaCacheSize);
       hdfsWriter = new DataWriter(connectorConfig, context, avroData);
-      Set<TopicPartition> assignment = context.assignment();
       recover(assignment);
       if (hiveIntegration) {
         syncWithHive();
@@ -72,7 +84,8 @@ public class HdfsSinkTask extends SinkTask {
       log.info("Couldn't start HdfsSinkConnector:", e);
       log.info("Shutting down HdfsSinkConnector.");
       if (hdfsWriter != null) {
-        hdfsWriter.close();
+        hdfsWriter.close(assignment);
+        hdfsWriter.stop();
       }
     }
   }
@@ -80,7 +93,7 @@ public class HdfsSinkTask extends SinkTask {
   @Override
   public void stop() throws ConnectException {
     if (hdfsWriter != null) {
-      hdfsWriter.close();
+      hdfsWriter.stop();
     }
   }
 
@@ -99,13 +112,13 @@ public class HdfsSinkTask extends SinkTask {
   }
 
   @Override
-  public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
-    hdfsWriter.onPartitionsAssigned(partitions);
+  public void open(Collection<TopicPartition> partitions) {
+    hdfsWriter.open(partitions);
   }
 
   @Override
-  public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
-    hdfsWriter.onPartitionsRevoked(partitions);
+  public void close(Collection<TopicPartition> partitions) {
+    hdfsWriter.close(partitions);
   }
 
   private void recover(Set<TopicPartition> assignment) {
