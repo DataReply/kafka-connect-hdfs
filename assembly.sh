@@ -4,7 +4,7 @@ RELEASE_VERSION=v4.0.0
 cd build_temp && \
 unzip kafka.zip && \
 cd kafka-trunk && \
-gradle installAll && \
+gradle -Dhttps.proxyHost=$1 -Dhttps.proxyPort=$2 installAll && \
 cd .. && \
 echo "kafka is installed" && \
 unzip common.zip && \
