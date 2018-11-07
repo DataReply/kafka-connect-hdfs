@@ -3,31 +3,27 @@ RELEASE_VERSION=v4.0.0
 
 cd build_temp && \
 unzip kafka.zip && \
-cd kafka && \
+cd kafka-trunk && \
 gradle installAll && \
 cd .. && \
 echo "kafka is installed" && \
 unzip common.zip && \
-cd common && \
-git checkout tags/v4.0.0 -b 4.0.0-datareply && \
+cd common-4.0.0 && \
 mvn clean install && \
 cd .. && \
 echo "common is installed" && \
 unzip rest-utils.zip && \
-cd rest-utils && \
-git checkout tags/v4.0.0 -b 4.0.0-datareply && \
+cd rest-utils-4.0.0 && \
 mvn clean install && \
 cd .. && \
 echo "rest-utils is installed" && \
 unzip schema-registry.zip && \
-cd schema-registry && \
-git checkout tags/v4.0.0 -b 4.0.0-datareply && \
+cd schema-registry-4.0.0 && \
 mvn clean install && \
 cd .. && \
 echo "schema-registry is installed" && \
 unzip kafka-connect-storage-common.zip && \
-cd kafka-connect-storage-common && \
-git checkout tags/v4.0.0 -b 4.0.0-datareply && \
+cd kafka-connect-storage-common-4.0.0 && \
 mvn clean install -DskipTests=true && \
 cd .. && \
 echo "kafka-connect-storage-common is installed" && \
