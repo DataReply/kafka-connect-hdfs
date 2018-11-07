@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 RELEASE_VERSION=v4.0.0
 
-GRADLE_P=$(installGradle) && \
 mkdir build_temp && \
 cd build_temp && \
 git clone https://github.com/apache/kafka/ && \
