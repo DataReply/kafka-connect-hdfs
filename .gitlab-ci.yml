@@ -14,6 +14,14 @@ build_release:
   script:
     - export http_proxy=$proxy && export https_proxy=$ssl_proxy
     - cd $CI_PROJECT_DIR
+    - mkdir build_temp
+    - cd build_temp
+    - python -c "from git import Repo;Repo.clone_from('https://github.com/apache/kafka', '$CI_PROJECT_DIR/build_temp/kafka')"
+    - python -c "from git import Repo;Repo.clone_from('https://github.com/confluentinc/common', '$CI_PROJECT_DIR/build_temp/common')"
+    - python -c "from git import Repo;Repo.clone_from('https://github.com/confluentinc/rest-utils', '$CI_PROJECT_DIR/build_temp/rest-utils')"
+    - python -c "from git import Repo;Repo.clone_from('https://github.com/confluentinc/schema-registry', '$CI_PROJECT_DIR/build_temp/schema-registry')"
+    - python -c "from git import Repo;Repo.clone_from('https://github.com/confluentinc/kafka-connect-storage-common', '$CI_PROJECT_DIR/build_temp/kafka-connect-storage-common')"
+    - cd ..
 #    - mvn package -DskipTests=true
     - sh assembly.sh
     - cp $CI_PROJECT_DIR/target/$PROJECT_NAME-4.0.0.jar /mnt/container-volumes/connect/kafka-connect-hdfs
