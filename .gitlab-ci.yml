@@ -12,6 +12,7 @@ build_release:
   before_script:
     - mkdir -p /root/.m2 && echo """<settings><proxies><proxy><id>http-proxy</id><active>true</active><protocol>http</protocol><host>$proxy_url</host><port>$proxy_port</port></proxy><proxy><id>https-proxy</id><active>true</active><protocol>https</protocol><host>$proxy_url</host><port>$proxy_port</port></proxy></proxies></settings>""" >> /root/.m2/settings.xml
   script:
+    - export http_proxy=$proxy && export https_proxy=$ssl_proxy
     - cd $CI_PROJECT_DIR
 #    - mvn package -DskipTests=true
     - sh assembly.sh
