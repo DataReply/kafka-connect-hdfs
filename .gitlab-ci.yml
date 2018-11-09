@@ -5,6 +5,8 @@ stages:
 
 build_release:
   stage: package
+  tags:
+    - dev
   except:
     - master
   only:
