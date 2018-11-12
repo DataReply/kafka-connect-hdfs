@@ -28,5 +28,5 @@ mvn clean install -DskipTests=true && \
 cd .. && \
 echo "kafka-connect-storage-common is installed" && \
 cd .. && \
-rm -r build_temp && \
+rm -r -f build_temp && \
 mvn clean package -DskipTests=true
