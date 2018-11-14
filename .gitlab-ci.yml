@@ -18,7 +18,7 @@ build_release:
     - cd $CI_PROJECT_DIR
     - mkdir build_temp
     - bash assembly.sh $proxy_url $proxy_port
-    - cp $CI_PROJECT_DIR/target/$PROJECT_NAME-4.0.0-package/share/java/$PROJECT_NAME/$PROJECT_NAME-4.0.0-package.jar /mnt/connect/kafka-connect-hdfs
+    - cp -r $CI_PROJECT_DIR/target/ /mnt/connect/kafka-connect-hdfs
   artifacts:
     name: "$PROJECT_NAME-$CI_COMMIT_TAG"
     # available at REPO_URL/builds/artifacts/<CI_COMMIT_TAG>/download?job=build_release
